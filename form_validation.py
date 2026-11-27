@@ -1,12 +1,12 @@
-from email_utils import generar_correo
+from email_utils import resolver_correo
 
 
 CAMPO_CORREO = "sgE-6972673-1-53"
 
 
-def escribir_y_validar_correo(driver, numero):
+def escribir_y_validar_correo(driver, numero, correo_recibido=None):
     """Escribe el correo y comprueba el valor real conservado por el navegador."""
-    correo_esperado = generar_correo(numero)
+    correo_esperado = resolver_correo(numero, correo_recibido)
     campo = driver.find_element("name", CAMPO_CORREO)
 
     campo.clear()
@@ -37,11 +37,11 @@ def escribir_y_validar_correo(driver, numero):
 
 
 def validar_correo_cargado(driver, correo_esperado):
-    """Impide enviar si el campo perdió una parte del correo, incluido `.com`."""
+    """Impide enviar si el navegador alteró o recortó el correo esperado."""
     campo = driver.find_element("name", CAMPO_CORREO)
     correo_cargado = (campo.get_attribute("value") or "").strip()
 
-    if correo_cargado != correo_esperado or not correo_cargado.endswith(".com"):
+    if correo_cargado != correo_esperado:
         raise ValueError(
             "El correo quedó incompleto en el formulario "
             f"(esperado={len(correo_esperado)} caracteres, "

@@ -4,6 +4,8 @@ from datetime import datetime
 
 import pandas as pd
 
+from email_utils import PATRON_CORREO
+
 
 COLUMNAS_REQUERIDAS = (
     "Nombre",
@@ -90,6 +92,7 @@ def validar_fila(row, numero_fila):
     numero = _celular(row["Número Celular"])
     zona = _texto(row["Zona"]).upper()
     es_primer_hijo = _texto(row["Es Primer Hijo"]).upper().replace("Í", "I")
+    correo = _texto(row.get("Correo"))
     fecha_original = row["Fecha de Nacimiento"]
     fecha = pd.to_datetime(fecha_original, errors="coerce")
 
@@ -133,6 +136,13 @@ def validar_fila(row, numero_fila):
             "El valor debe ser SI o NO",
             row["Es Primer Hijo"],
         )
+    if correo and not PATRON_CORREO.fullmatch(correo):
+        _agregar_error(
+            errores,
+            "Correo",
+            "El correo no tiene un formato válido",
+            row.get("Correo"),
+        )
     if pd.isna(fecha):
         _agregar_error(
             errores,
@@ -147,12 +157,15 @@ def validar_fila(row, numero_fila):
         "Numero": numero,
         "Zona": zona,
         "EsPrimerHijo": es_primer_hijo,
+        "Correo": correo,
         "FechaNacimiento": None if pd.isna(fecha) else fecha.to_pydatetime(),
     }
     datos_recibidos = {
         columna: _valor_serializable(row[columna])
         for columna in COLUMNAS_REQUERIDAS
     }
+    if "Correo" in row.index:
+        datos_recibidos["Correo"] = _valor_serializable(row["Correo"])
 
     return {
         "fila": numero_fila,

@@ -3,7 +3,7 @@ import os
 import asyncio
 import time
 from excel_reader import ErrorArchivoExcel, leer_excel
-from email_utils import generar_correo
+from email_utils import resolver_correo
 from form_validation import escribir_y_validar_correo, validar_correo_cargado
 from utils import generar_fecha_lima, formatear_fecha_selva
 from config import (
@@ -76,7 +76,7 @@ def construir_datos_formulario(registro):
         "esPrimerHijo": es_primer_hijo,
         "fechaNacimiento": fecha,
         "sexo": "10127",
-        "correo": generar_correo(registro["Numero"]),
+        "correo": resolver_correo(registro["Numero"], registro.get("Correo")),
         "numeroCelular": registro["Numero"],
         "departamento": DEPARTAMENTOS_POR_ZONA[zona],
         "consentimientos": ["10139", "10140", "10141"],
@@ -181,7 +181,11 @@ def enviar_formulario_con_driver(
         _reportar_campo(on_campo, "sexo", "Sexo", datos["sexo"])
 
         # Contacto
-        correo = escribir_y_validar_correo(driver, registro["Numero"])
+        correo = escribir_y_validar_correo(
+            driver,
+            registro["Numero"],
+            datos["correo"],
+        )
         _reportar_campo(on_campo, "correo", "Correo", correo)
         driver.find_element(By.NAME, "sgE-6972673-1-54").send_keys(
             datos["numeroCelular"]

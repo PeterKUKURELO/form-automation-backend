@@ -113,6 +113,7 @@ El archivo Excel debe contener las siguientes columnas:
 | Zona | LIMA o SELVA |
 | Es Primer Hijo | SI o NO |
 | Fecha de Nacimiento | Fecha en formato Excel |
+| Correo | Opcional; si está vacío se genera `{Número Celular}@noemail.com` |
 
 ## 🔧 Instalación
 
@@ -219,7 +220,7 @@ El sistema proporciona feedback en tiempo real:
 - Requiere Chrome instalado en el sistema
 - ChromeDriver debe coincidir con la versión de Chrome
 - Los archivos Excel se guardan temporalmente en `excel_files/`
-- El sistema genera correos ficticios usando el formato `{numero}@noemail.com`
+- El sistema usa el valor opcional de `Correo`; si está vacío, genera `{numero}@noemail.com`
 
 ## 🤝 Contribución
 

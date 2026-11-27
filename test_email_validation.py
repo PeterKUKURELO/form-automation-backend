@@ -6,7 +6,7 @@ from form_validation import (
     escribir_y_validar_correo,
     validar_correo_cargado,
 )
-from email_utils import generar_correo
+from email_utils import generar_correo, resolver_correo
 
 
 class GenerarCorreoTests(unittest.TestCase):
@@ -19,6 +19,22 @@ class GenerarCorreoTests(unittest.TestCase):
     def test_rechaza_numero_vacio(self):
         with self.assertRaises(ValueError):
             generar_correo("   ")
+
+    def test_usa_el_correo_recibido(self):
+        self.assertEqual(
+            resolver_correo("987654321", " persona@gmail.com "),
+            "persona@gmail.com",
+        )
+
+    def test_genera_correo_si_la_celda_esta_vacia(self):
+        self.assertEqual(
+            resolver_correo("987654321", ""),
+            "987654321@noemail.com",
+        )
+
+    def test_rechaza_correo_recibido_invalido(self):
+        with self.assertRaisesRegex(ValueError, "formato válido"):
+            resolver_correo("987654321", "correo-incompleto")
 
 
 class ValidacionNavegadorTests(unittest.TestCase):
@@ -54,6 +70,21 @@ class ValidacionNavegadorTests(unittest.TestCase):
 
         self.assertEqual(correo, "987654321@noemail.com")
         driver.execute_script.assert_called_once()
+
+    def test_escribe_el_gmail_recibido(self):
+        campo = Mock()
+        campo.get_attribute.return_value = "persona@gmail.com"
+        driver = Mock()
+        driver.find_element.return_value = campo
+
+        correo = escribir_y_validar_correo(
+            driver,
+            "987654321",
+            "persona@gmail.com",
+        )
+
+        self.assertEqual(correo, "persona@gmail.com")
+        campo.send_keys.assert_called_once_with("persona@gmail.com")
 
 
 if __name__ == "__main__":

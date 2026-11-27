@@ -55,6 +55,51 @@ class ExcelReaderTests(unittest.TestCase):
         with self.assertRaisesRegex(ErrorArchivoExcel, "Faltan columnas"):
             leer_excel(ruta)
 
+    def test_conserva_correo_opcional_y_permite_celda_vacia(self):
+        ruta = self._crear_excel([
+            {
+                "Nombre": "Camila",
+                "Apellido": "Rojas",
+                "Número Celular": "987654321",
+                "Zona": "CUSCO",
+                "Es Primer Hijo": "SI",
+                "Fecha de Nacimiento": datetime(2024, 1, 15),
+                "Correo": "camila@gmail.com",
+            },
+            {
+                "Nombre": "Mateo",
+                "Apellido": "Quispe",
+                "Número Celular": "912345678",
+                "Zona": "CUSCO",
+                "Es Primer Hijo": "NO",
+                "Fecha de Nacimiento": datetime(2024, 2, 10),
+                "Correo": None,
+            },
+        ])
+
+        registros = leer_excel(ruta)
+
+        self.assertTrue(registros[0]["valido"])
+        self.assertEqual(registros[0]["datos"]["Correo"], "camila@gmail.com")
+        self.assertTrue(registros[1]["valido"])
+        self.assertEqual(registros[1]["datos"]["Correo"], "")
+
+    def test_reporta_correo_opcional_invalido(self):
+        ruta = self._crear_excel([{
+            "Nombre": "Camila",
+            "Apellido": "Rojas",
+            "Número Celular": "987654321",
+            "Zona": "CUSCO",
+            "Es Primer Hijo": "SI",
+            "Fecha de Nacimiento": datetime(2024, 1, 15),
+            "Correo": "correo-incompleto",
+        }])
+
+        registro = leer_excel(ruta)[0]
+
+        self.assertFalse(registro["valido"])
+        self.assertEqual(registro["errores"][0]["campo"], "Correo")
+
 
 class StreamingTests(unittest.IsolatedAsyncioTestCase):
     async def test_emite_error_individual_campo_y_continua(self):
