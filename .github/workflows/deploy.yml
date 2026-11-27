@@ -92,7 +92,7 @@ jobs:
         if: env.SERVER_HOST != '' && env.SERVER_USER != '' && env.SERVER_SSH_KEY != '' && env.SERVER_KNOWN_HOSTS != '' && env.GHCR_USERNAME != '' && env.GHCR_TOKEN != ''
         run: |
           ssh -i ~/.ssh/deploy_key -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" "mkdir -p /root/peter_kukurelo/form-automation-backend"
-          scp -i ~/.ssh/deploy_key -P "$SERVER_PORT" deploy/compose.prod.yaml "$SERVER_USER@$SERVER_HOST:/root/peter_kukurelo/form-automation-backend/"
+          scp -i ~/.ssh/deploy_key -P "$SERVER_PORT" deploy/compose.prod.yaml deploy/nginx.camila-automation.conf "$SERVER_USER@$SERVER_HOST:/root/peter_kukurelo/form-automation-backend/"
 
       - name: Deploy to CentOS
         if: env.SERVER_HOST != '' && env.SERVER_USER != '' && env.SERVER_SSH_KEY != '' && env.SERVER_KNOWN_HOSTS != '' && env.GHCR_USERNAME != '' && env.GHCR_TOKEN != ''

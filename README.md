@@ -45,8 +45,12 @@ El pipeline instalará la configuración de producción en
 `/root/peter_kukurelo/form-automation-backend`.
 En el servidor de producción, el contenedor queda publicado únicamente en
 `127.0.0.1:8010`. El Nginx existente debe enviar
-`backend.iepmedalla.com` a esa dirección. De esta forma el backend no ocupa
+`camila-automation.duckdns.org` a esa dirección. De esta forma el backend no ocupa
 directamente los puertos públicos `80` y `443`.
+
+La plantilla `deploy/nginx.camila-automation.conf` contiene el proxy Nginx para
+el dominio. Debe instalarse una sola vez en `/etc/nginx/conf.d/`; Certbot puede
+agregar después el bloque HTTPS y administrar la renovación del certificado.
 
 ### Secretos del environment `production` en GitHub
 
