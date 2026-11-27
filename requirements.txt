@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic
+python-multipart
+pandas
+selenium
+openpyxl
+sse-starlette
+psutil

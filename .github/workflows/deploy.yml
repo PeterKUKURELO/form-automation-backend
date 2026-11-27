@@ -1,0 +1,141 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: production-backend
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m unittest discover -v
+
+  publish:
+    name: Build, publish and deploy
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_PORT: ${{ secrets.SERVER_PORT || '22' }}
+      SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+      SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
+      DOMAIN: ${{ secrets.DOMAIN }}
+      ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
+      GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+      CORS_ORIGINS: ${{ secrets.CORS_ORIGINS || '*' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Normalize image name
+        id: image
+        run: echo "name=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and publish image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
+            ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Configure SSH
+        if: env.SERVER_HOST != '' && env.SERVER_USER != '' && env.SERVER_SSH_KEY != '' && env.SERVER_KNOWN_HOSTS != '' && env.DOMAIN != '' && env.ACME_EMAIL != '' && env.GHCR_USERNAME != '' && env.GHCR_TOKEN != ''
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SERVER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Upload production configuration
+        if: env.SERVER_HOST != '' && env.SERVER_USER != '' && env.SERVER_SSH_KEY != '' && env.SERVER_KNOWN_HOSTS != '' && env.DOMAIN != '' && env.ACME_EMAIL != '' && env.GHCR_USERNAME != '' && env.GHCR_TOKEN != ''
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" "mkdir -p /opt/form-automation-backend"
+          scp -i ~/.ssh/deploy_key -P "$SERVER_PORT" deploy/compose.prod.yaml deploy/Caddyfile "$SERVER_USER@$SERVER_HOST:/opt/form-automation-backend/"
+
+      - name: Deploy to CentOS
+        if: env.SERVER_HOST != '' && env.SERVER_USER != '' && env.SERVER_SSH_KEY != '' && env.SERVER_KNOWN_HOSTS != '' && env.DOMAIN != '' && env.ACME_EMAIL != '' && env.GHCR_USERNAME != '' && env.GHCR_TOKEN != ''
+        env:
+          BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:${{ github.sha }}
+        run: |
+          DOMAIN_B64="$(printf '%s' "$DOMAIN" | base64 -w 0)"
+          ACME_EMAIL_B64="$(printf '%s' "$ACME_EMAIL" | base64 -w 0)"
+          CORS_ORIGINS_B64="$(printf '%s' "$CORS_ORIGINS" | base64 -w 0)"
+          GHCR_USERNAME_B64="$(printf '%s' "$GHCR_USERNAME" | base64 -w 0)"
+          GHCR_TOKEN_B64="$(printf '%s' "$GHCR_TOKEN" | base64 -w 0)"
+          BACKEND_IMAGE_B64="$(printf '%s' "$BACKEND_IMAGE" | base64 -w 0)"
+
+          ssh -i ~/.ssh/deploy_key -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" \
+            "DOMAIN_B64=$DOMAIN_B64 ACME_EMAIL_B64=$ACME_EMAIL_B64 CORS_ORIGINS_B64=$CORS_ORIGINS_B64 GHCR_USERNAME_B64=$GHCR_USERNAME_B64 GHCR_TOKEN_B64=$GHCR_TOKEN_B64 BACKEND_IMAGE_B64=$BACKEND_IMAGE_B64 bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd /opt/form-automation-backend
+
+          decode() { printf '%s' "$1" | base64 --decode; }
+          DOMAIN="$(decode "$DOMAIN_B64")"
+          ACME_EMAIL="$(decode "$ACME_EMAIL_B64")"
+          CORS_ORIGINS="$(decode "$CORS_ORIGINS_B64")"
+          GHCR_USERNAME="$(decode "$GHCR_USERNAME_B64")"
+          GHCR_TOKEN="$(decode "$GHCR_TOKEN_B64")"
+          BACKEND_IMAGE="$(decode "$BACKEND_IMAGE_B64")"
+
+          umask 077
+          {
+            printf 'DOMAIN=%s\n' "$DOMAIN"
+            printf 'ACME_EMAIL=%s\n' "$ACME_EMAIL"
+            printf 'CORS_ORIGINS=%s\n' "$CORS_ORIGINS"
+            printf 'BACKEND_IMAGE=%s\n' "$BACKEND_IMAGE"
+          } > .env
+
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USERNAME" --password-stdin
+          docker compose --env-file .env -f compose.prod.yaml pull
+          docker compose --env-file .env -f compose.prod.yaml up -d --remove-orphans
+          docker compose --env-file .env -f compose.prod.yaml ps
+          docker image prune -f
+          REMOTE
+
+      - name: Deployment not configured
+        if: env.SERVER_HOST == '' || env.SERVER_USER == '' || env.SERVER_SSH_KEY == '' || env.SERVER_KNOWN_HOSTS == '' || env.DOMAIN == '' || env.ACME_EMAIL == '' || env.GHCR_USERNAME == '' || env.GHCR_TOKEN == ''
+        run: echo "Image published. Server deployment skipped because one or more production secrets are missing."

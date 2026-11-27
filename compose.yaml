@@ -1,0 +1,23 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: form-automation-backend:latest
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      PORT: "8000"
+      CORS_ORIGINS: "${CORS_ORIGINS:-*}"
+      EXCEL_DIR: /app/excel_files
+      SCREENSHOTS_DIR: /app/screenshots
+    volumes:
+      - excel_files:/app/excel_files
+      - screenshots:/app/screenshots
+    shm_size: "1gb"
+    init: true
+    restart: unless-stopped
+
+volumes:
+  excel_files:
+  screenshots:
