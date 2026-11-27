@@ -19,7 +19,7 @@ dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker
 systemctl enable --now docker
 usermod -aG docker "${DEPLOY_USER}"
 
-install -d -m 0750 -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" /opt/form-automation-backend
+install -d -m 0750 -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" /root/peter_kukurelo/form-automation-backend
 
 if systemctl is-active --quiet firewalld; then
   firewall-cmd --permanent --add-service=http
@@ -27,4 +27,5 @@ if systemctl is-active --quiet firewalld; then
   firewall-cmd --reload
 fi
 
-echo "Docker and Compose are ready. Log out and back in so ${DEPLOY_USER} receives Docker group access."
+echo "Docker and Compose are ready. Deployment directory: /root/peter_kukurelo/form-automation-backend"
+echo "Log out and back in so ${DEPLOY_USER} receives Docker group access."

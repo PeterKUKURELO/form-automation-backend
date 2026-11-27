@@ -41,6 +41,8 @@ sudo bash deploy/bootstrap-centos.sh USUARIO_SSH
 ```
 
 Después, cierra la sesión SSH y vuelve a entrar para aplicar el grupo `docker`.
+El pipeline instalará la configuración de producción en
+`/root/peter_kukurelo/form-automation-backend`.
 El DNS tipo `A` del dominio debe apuntar a la IP pública del servidor y los
 puertos `80` y `443` deben estar abiertos. Caddy obtendrá y renovará el
 certificado automáticamente.
