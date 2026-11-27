@@ -47,8 +47,6 @@ jobs:
       SERVER_PORT: ${{ secrets.SERVER_PORT || '22' }}
       SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
       SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
-      DOMAIN: ${{ secrets.DOMAIN }}
-      ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
       GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
       CORS_ORIGINS: ${{ secrets.CORS_ORIGINS || '*' }}
@@ -82,7 +80,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Configure SSH
-        if: env.SERVER_HOST != '' && env.SERVER_USER != '' && env.SERVER_SSH_KEY != '' && env.SERVER_KNOWN_HOSTS != '' && env.DOMAIN != '' && env.ACME_EMAIL != '' && env.GHCR_USERNAME != '' && env.GHCR_TOKEN != ''
+        if: env.SERVER_HOST != '' && env.SERVER_USER != '' && env.SERVER_SSH_KEY != '' && env.SERVER_KNOWN_HOSTS != '' && env.GHCR_USERNAME != '' && env.GHCR_TOKEN != ''
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/deploy_key
@@ -91,31 +89,27 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
 
       - name: Upload production configuration
-        if: env.SERVER_HOST != '' && env.SERVER_USER != '' && env.SERVER_SSH_KEY != '' && env.SERVER_KNOWN_HOSTS != '' && env.DOMAIN != '' && env.ACME_EMAIL != '' && env.GHCR_USERNAME != '' && env.GHCR_TOKEN != ''
+        if: env.SERVER_HOST != '' && env.SERVER_USER != '' && env.SERVER_SSH_KEY != '' && env.SERVER_KNOWN_HOSTS != '' && env.GHCR_USERNAME != '' && env.GHCR_TOKEN != ''
         run: |
           ssh -i ~/.ssh/deploy_key -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" "mkdir -p /root/peter_kukurelo/form-automation-backend"
-          scp -i ~/.ssh/deploy_key -P "$SERVER_PORT" deploy/compose.prod.yaml deploy/Caddyfile "$SERVER_USER@$SERVER_HOST:/root/peter_kukurelo/form-automation-backend/"
+          scp -i ~/.ssh/deploy_key -P "$SERVER_PORT" deploy/compose.prod.yaml "$SERVER_USER@$SERVER_HOST:/root/peter_kukurelo/form-automation-backend/"
 
       - name: Deploy to CentOS
-        if: env.SERVER_HOST != '' && env.SERVER_USER != '' && env.SERVER_SSH_KEY != '' && env.SERVER_KNOWN_HOSTS != '' && env.DOMAIN != '' && env.ACME_EMAIL != '' && env.GHCR_USERNAME != '' && env.GHCR_TOKEN != ''
+        if: env.SERVER_HOST != '' && env.SERVER_USER != '' && env.SERVER_SSH_KEY != '' && env.SERVER_KNOWN_HOSTS != '' && env.GHCR_USERNAME != '' && env.GHCR_TOKEN != ''
         env:
           BACKEND_IMAGE: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:${{ github.sha }}
         run: |
-          DOMAIN_B64="$(printf '%s' "$DOMAIN" | base64 -w 0)"
-          ACME_EMAIL_B64="$(printf '%s' "$ACME_EMAIL" | base64 -w 0)"
           CORS_ORIGINS_B64="$(printf '%s' "$CORS_ORIGINS" | base64 -w 0)"
           GHCR_USERNAME_B64="$(printf '%s' "$GHCR_USERNAME" | base64 -w 0)"
           GHCR_TOKEN_B64="$(printf '%s' "$GHCR_TOKEN" | base64 -w 0)"
           BACKEND_IMAGE_B64="$(printf '%s' "$BACKEND_IMAGE" | base64 -w 0)"
 
           ssh -i ~/.ssh/deploy_key -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "DOMAIN_B64=$DOMAIN_B64 ACME_EMAIL_B64=$ACME_EMAIL_B64 CORS_ORIGINS_B64=$CORS_ORIGINS_B64 GHCR_USERNAME_B64=$GHCR_USERNAME_B64 GHCR_TOKEN_B64=$GHCR_TOKEN_B64 BACKEND_IMAGE_B64=$BACKEND_IMAGE_B64 bash -s" <<'REMOTE'
+            "CORS_ORIGINS_B64=$CORS_ORIGINS_B64 GHCR_USERNAME_B64=$GHCR_USERNAME_B64 GHCR_TOKEN_B64=$GHCR_TOKEN_B64 BACKEND_IMAGE_B64=$BACKEND_IMAGE_B64 bash -s" <<'REMOTE'
           set -euo pipefail
           cd /root/peter_kukurelo/form-automation-backend
 
           decode() { printf '%s' "$1" | base64 --decode; }
-          DOMAIN="$(decode "$DOMAIN_B64")"
-          ACME_EMAIL="$(decode "$ACME_EMAIL_B64")"
           CORS_ORIGINS="$(decode "$CORS_ORIGINS_B64")"
           GHCR_USERNAME="$(decode "$GHCR_USERNAME_B64")"
           GHCR_TOKEN="$(decode "$GHCR_TOKEN_B64")"
@@ -123,9 +117,8 @@ jobs:
 
           umask 077
           {
-            printf 'DOMAIN=%s\n' "$DOMAIN"
-            printf 'ACME_EMAIL=%s\n' "$ACME_EMAIL"
             printf 'CORS_ORIGINS=%s\n' "$CORS_ORIGINS"
+            printf 'BACKEND_HOST_PORT=8010\n'
             printf 'BACKEND_IMAGE=%s\n' "$BACKEND_IMAGE"
           } > .env
 
@@ -137,5 +130,5 @@ jobs:
           REMOTE
 
       - name: Deployment not configured
-        if: env.SERVER_HOST == '' || env.SERVER_USER == '' || env.SERVER_SSH_KEY == '' || env.SERVER_KNOWN_HOSTS == '' || env.DOMAIN == '' || env.ACME_EMAIL == '' || env.GHCR_USERNAME == '' || env.GHCR_TOKEN == ''
+        if: env.SERVER_HOST == '' || env.SERVER_USER == '' || env.SERVER_SSH_KEY == '' || env.SERVER_KNOWN_HOSTS == '' || env.GHCR_USERNAME == '' || env.GHCR_TOKEN == ''
         run: echo "Image published. Server deployment skipped because one or more production secrets are missing."

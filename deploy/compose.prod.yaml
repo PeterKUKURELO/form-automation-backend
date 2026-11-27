@@ -11,8 +11,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       EXCEL_DIR: /app/excel_files
       SCREENSHOTS_DIR: /app/screenshots
-    expose:
-      - "8000"
+    ports:
+      - "127.0.0.1:${BACKEND_HOST_PORT:-8010}:8000"
     volumes:
       - excel_files:/app/excel_files
       - screenshots:/app/screenshots
@@ -23,34 +23,7 @@ services:
       timeout: 5s
       start_period: 15s
       retries: 3
-    networks:
-      - internal
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
-    environment:
-      DOMAIN: ${DOMAIN:?DOMAIN is required}
-      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - internal
-
-networks:
-  internal:
 
 volumes:
   excel_files:
   screenshots:
-  caddy_data:
-  caddy_config:

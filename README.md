@@ -43,9 +43,10 @@ sudo bash deploy/bootstrap-centos.sh USUARIO_SSH
 Después, cierra la sesión SSH y vuelve a entrar para aplicar el grupo `docker`.
 El pipeline instalará la configuración de producción en
 `/root/peter_kukurelo/form-automation-backend`.
-El DNS tipo `A` del dominio debe apuntar a la IP pública del servidor y los
-puertos `80` y `443` deben estar abiertos. Caddy obtendrá y renovará el
-certificado automáticamente.
+En el servidor de producción, el contenedor queda publicado únicamente en
+`127.0.0.1:8010`. El Nginx existente debe enviar
+`backend.iepmedalla.com` a esa dirección. De esta forma el backend no ocupa
+directamente los puertos públicos `80` y `443`.
 
 ### Secretos del environment `production` en GitHub
 
@@ -56,8 +57,6 @@ certificado automáticamente.
 | `SERVER_PORT` | Puerto SSH, normalmente `22` |
 | `SERVER_SSH_KEY` | Llave privada SSH de despliegue |
 | `SERVER_KNOWN_HOSTS` | Resultado de `ssh-keyscan -H SERVIDOR` |
-| `DOMAIN` | Dominio público, por ejemplo `api.example.com` |
-| `ACME_EMAIL` | Correo para avisos del certificado |
 | `GHCR_USERNAME` | Usuario de GitHub que descargará la imagen |
 | `GHCR_TOKEN` | PAT classic con permiso `read:packages` |
 | `CORS_ORIGINS` | Dominio del frontend; opcional, default `*` |
